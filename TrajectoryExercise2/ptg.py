@@ -3,6 +3,7 @@ import random
 from cost_functions import *
 from constants import *
 
+# TODO - tweak weights to existing cost functions
 WEIGHTED_COST_FUNCTIONS = [
     (time_diff_cost,    0),
     (s_diff_cost,       1),
@@ -16,47 +17,36 @@ WEIGHTED_COST_FUNCTIONS = [
     (total_accel_cost,  0),
 ]
 
-def PTG(start, goal, T, predictions):
-	"""
-	Returns a polynomial trajectory connecting (or almost connecting)
-	start to goal over a duration of approximately T seconds. This
-	trajectory should avoid collisions with any of the vehicles given
-	in predictions.
-
-	INPUTS
-
-	start - length 6 array corresponding to INITIAL values of:
-	  [s, s_dot, s_double_dot, d, d_dot, d_double_dot]
-
-	goal - length 6 array corresponding to FINAL values of state variables.
-
-	T - desired duration of maneuver (in seconds)
-
-	predictions - array of vehicle predictions. Each "vehicle prediction" 
-	  is itself an array of (s,d,t) coordinates. The example below shows 
-	  predictions for two vehicles. The first moves along at 1 m/s at d=0, 
-	  while the second moves at 3 m/s and changes from d=4 to d=0.
-
-	  example - [
-	  	[
-	  		(0, 0, 0),
-	  		(1, 0, 1),
-	  		(2, 0, 2),
-	  		(3, 0, 3)
-	  	],
-	  	[
-	  		(0, 4, 0),
-	  		(3, 4, 1),
-	  		(6, 2, 2),
-	  		(9, 0, 3)
-	  	]
-	  ] 
-	"""
-###################
-#
-# HELPER FUNCTIONS
-#
 def PTG(start_s, start_d, target_vehicle, delta, T, predictions):
+	"""
+	Finds the best trajectory according to WEIGHTED_COST_FUNCTIONS (global).
+
+	arguments:
+	 start_s - [s, s_dot, s_ddot]
+
+	 start_d - [d, d_dot, d_ddot]
+
+	 target_vehicle - id of leading vehicle (int) which can be used to retrieve
+	   that vehicle from the "predictions" dictionary. This is the vehicle that 
+	   we are setting our trajectory relative to.
+
+	 delta - a length 6 array indicating the offset we are aiming for between us
+	   and the target_vehicle. So if at time 5 the target vehicle will be at 
+	   [100, 10, 0, 0, 0, 0] and delta is [-10, 0, 0, 4, 0, 0], then our goal 
+	   state for t = 5 will be [90, 10, 0, 4, 0, 0].
+
+	 T - the desired time at which we will be at the goal (relative to now as t=0)
+
+	 predictions - dictionary of {v_id : vehicle }. Each vehicle has a method 
+	   vehicle.state_in(time) which returns a length 6 array giving that vehicle's
+	   expected [s, s_dot, s_ddot, d, d_dot, d_ddot] state at that time.
+
+	return:
+	 (best_s, best_d, best_t) where best_s are the 6 coefficients representing s(t)
+	 best_d gives coefficients for d(t) and best_t gives duration associated w/ 
+	 this trajectory.
+	"""
+
     target = predictions[target_vehicle]
     # generate alternative goals
     all_goals = []
@@ -92,6 +82,9 @@ def calculate_cost(trajectory, target_vehicle, delta, goal_t, predictions, cost_
     return cost
 
 def perturb_goal(goal_s, goal_d):
+	"""
+	Returns a "perturbed" version of the goal.
+	"""
     new_s_goal = []
     for mu, sig in zip(goal_s, SIGMA_S):
         new_s_goal.append(random.gauss(mu, sig))
@@ -103,6 +96,9 @@ def perturb_goal(goal_s, goal_d):
     return tuple([new_s_goal, new_d_goal])
 
 def JMT(start, end, T):
+	"""
+	Calculates Jerk Minimizing Trajectory for start, end and T.
+	"""
     a_0, a_1, a_2 = start[0], start[1], start[2] / 2.0
     c_0 = a_0 + a_1 * T + a_2 * T**2
     c_1 = a_1 + a_2 * T

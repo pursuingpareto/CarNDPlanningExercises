@@ -2,10 +2,18 @@ from helpers import logistic, to_equation, differentiate, nearest_approach_to_an
 from constants import *
 # COST FUNCTIONS
 def time_diff_cost(traj, target_vehicle, delta, T, predictions):
+    """
+    Penalizes trajectories that span a duration which is longer or 
+    shorter than the duration requested.
+    """
     _, _, t = traj
-    return logistic(abs(t-T))
+    return logistic(float(abs(t-T)) / T)
 
 def s_diff_cost(traj, target_vehicle, delta, T, predictions):
+    """
+    Penalizes trajectories whose s coordinate (and derivatives) 
+    differ from the goal.
+    """
     s, _, _ = traj
     target = predictions[target_vehicle].state_in(T)
     s_targ = target[:3]
@@ -16,6 +24,10 @@ def s_diff_cost(traj, target_vehicle, delta, T, predictions):
     return cost
 
 def d_diff_cost(traj, target_vehicle, delta, T, predictions):
+    """
+    Penalizes trajectories whose d coordinate (and derivatives) 
+    differ from the goal.
+    """
     _, d, _ = traj
     target = predictions[target_vehicle].state_in(T)
     d_targ = target[3:]
@@ -26,12 +38,17 @@ def d_diff_cost(traj, target_vehicle, delta, T, predictions):
     return cost
 
 def collision_cost(traj, target_vehicle, delta, T, predictions):
+    """
+    Binary cost function which penalizes collisions.
+    """
     nearest = nearest_approach_to_any_vehicle(traj, predictions)
     if nearest < 2*VEHICLE_RADIUS: return 1.0
     else : return 0.0
-    pass
 
 def buffer_cost(traj, target_vehicle, delta, T, predictions):
+    """
+    Penalizes getting close to other vehicles.
+    """
     nearest = nearest_approach_to_any_vehicle(traj, predictions)
     return logistic(2*VEHICLE_RADIUS / nearest)
     
@@ -42,6 +59,9 @@ def exceeds_speed_limit_cost(traj, target_vehicle, delta, T, predictions):
     pass
 
 def efficiency_cost(traj, target_vehicle, delta, T, predictions):
+    """
+    Rewards high average speeds.
+    """
     s, _, t = traj
     s = to_equation(s)
     avg_v = float(s(t)) / t
