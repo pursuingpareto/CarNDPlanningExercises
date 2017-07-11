@@ -1,5 +1,6 @@
-from helpers import logistic, to_equation, differentiate, nearest_approach_to_any_vehicle
+from helpers import logistic, to_equation, differentiate, nearest_approach_to_any_vehicle, get_f_and_N_derivatives
 from constants import *
+import numpy as np
 # COST FUNCTIONS
 def time_diff_cost(traj, target_vehicle, delta, T, predictions):
     """
@@ -14,11 +15,13 @@ def s_diff_cost(traj, target_vehicle, delta, T, predictions):
     Penalizes trajectories whose s coordinate (and derivatives) 
     differ from the goal.
     """
-    s, _, _ = traj
+    s, _, T = traj
     target = predictions[target_vehicle].state_in(T)
+    target = list(np.array(target) + np.array(delta))
     s_targ = target[:3]
+    S = [f(T) for f in get_f_and_N_derivatives(s, 2)]
     cost = 0
-    for actual, expected, sigma in zip(s, s_targ, SIGMA_S):
+    for actual, expected, sigma in zip(S, s_targ, SIGMA_S):
         diff = float(abs(actual-expected))
         cost += logistic(diff/sigma)
     return cost
@@ -28,11 +31,22 @@ def d_diff_cost(traj, target_vehicle, delta, T, predictions):
     Penalizes trajectories whose d coordinate (and derivatives) 
     differ from the goal.
     """
-    _, d, _ = traj
+    _, d_coeffs, T = traj
+    
+    d_dot_coeffs = differentiate(d_coeffs)
+    d_ddot_coeffs = differentiate(d_dot_coeffs)
+
+    d = to_equation(d_coeffs)
+    d_dot = to_equation(d_dot_coeffs)
+    d_ddot = to_equation(d_ddot_coeffs)
+
+    D = [d(T), d_dot(T), d_ddot(T)]
+    
     target = predictions[target_vehicle].state_in(T)
+    target = list(np.array(target) + np.array(delta))
     d_targ = target[3:]
     cost = 0
-    for actual, expected, sigma in zip(d, d_targ, SIGMA_D):
+    for actual, expected, sigma in zip(D, d_targ, SIGMA_D):
         diff = float(abs(actual-expected))
         cost += logistic(diff/sigma)
     return cost
